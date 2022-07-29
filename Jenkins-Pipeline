@@ -1,0 +1,51 @@
+
+pipeline {
+    agent any
+    tools {
+        maven "M2_HOME"
+    }
+    environment {
+        NEXUS_VERSION = "nexus3"
+        NEXUS_PROTOCOL = "http"
+        NEXUS_URL = "https://nexus.devops.karnagi.monster/"
+        NEXUS_REPOSITORY = "hello-world"
+        NEXUS_CREDENTIAL_ID = "NEXUS_ID"
+    }
+    stages {
+        stage("GitHub") {
+            steps {
+                script {
+                    git branch: 'master', url: 'https://github.com/ravdy/javaloginapp.git';
+                }
+            }
+        }    
+       stage('Build'){
+            steps{
+                sh 'mvn clean package'
+            }
+         }
+        stage('SonarQube analysis') {
+        steps{
+        withSonarQubeEnv('SonarQube') { 
+        sh "mvn sonar:sonar"
+        }
+    }
+    }
+        stage("Nexus Repository Manager") {
+            steps {
+                nexusArtifactUploader artifacts: 
+                [[artifactId: '${POM_ARTIFACTID}', 
+                classifier: '', 
+                file: 'pom.xml', 
+                type: '${POM_PACKAGING}']], 
+                credentialsId: 'NEXUS_ID', 
+                groupId: '${POM_GROUPID}', 
+                nexusUrl: 'https://nexus.devops.karnagi.monster/', 
+                nexusVersion: 'nexus3', 
+                protocol: 'http', 
+                repository: 'hello-world', 
+                version: '${POM_VERSION}'
+            }
+        }
+    }
+}
